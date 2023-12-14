@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Movies.Models;
+using Movies.Repository;
 using Movies.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,8 @@ builder.Services.AddDbContext<ApplicationDBContext>(
     options=>options.UseSqlServer(connectionstring));
 builder.Services.AddTransient<IGenreService,GenreService>();
 builder.Services.AddTransient<IMovieService,MovieService>();
+
+builder.Services.AddTransient<IUnitOfWork,UnitOfWork>();
 
 builder.Services.AddControllers();
 builder.Services.AddCors();

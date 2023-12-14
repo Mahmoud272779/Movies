@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Movies.DTOs;
 using Movies.Models;
+using Movies.Repository;
 using Movies.Services;
 
 namespace Movies.Controllers
@@ -11,30 +12,35 @@ namespace Movies.Controllers
     [ApiController]
     public class MovieController : ControllerBase
     {
-        private IMovieService _movieService;
-        private IGenreService _genreService;
+        //private imovieservice _movieservice;
+        //private igenreservice _genreservice;
+        //private IBaseRepo<Movie> _movieRepo;
+
+        private readonly IUnitOfWork unitOfWork;
+
+        public MovieController(IUnitOfWork unitOfWork)
+        {
+            this.unitOfWork = unitOfWork;
+        }
+
         private List<string> _AllowedExtensions = new List<string> {".jpg",".png" };
 
         private long _maxAllowedPostarSize = 1024 * 1024;
 
-        public MovieController(IMovieService movieService, IGenreService genreService)
-        {
-
-            _movieService = movieService;
-            _genreService = genreService;
-        }
+        
 
 
 
         [HttpGet("ff")]
         public async Task<IActionResult> getallmovies()
         {
-            var movies =  await _movieService.GetAll();
+            var movies =  await unitOfWork.MovieRepo.GetAll();
             return Ok(movies.Select(m=>new { 
             MovieID=m.Id,
-            GenereID=m.genre.Id,
-            GenereName=m.genre.Name,
-            Rate=m.rate
+           
+            Rate=m.rate,
+
+            poster=m.postar
 
             }).ToList());
         }
@@ -52,8 +58,8 @@ namespace Movies.Controllers
             if (m.postar.Length > _maxAllowedPostarSize)
                 return BadRequest("Max allowed size for poster is 1MB!");
 
-            if (!_genreService.isvalidgenre( m.GenreId))
-                return BadRequest("GenreId is not in Genre table!");
+           // if (!_movierepo.isvalidgenre( m.genreid))
+              //  return badrequest("genreid is not in genre table!");
 
             using var datastream = new MemoryStream();
 
@@ -67,7 +73,8 @@ namespace Movies.Controllers
                 storeline = m.storeline,
                 year = m.year,
             };
-            _movieService.addmovie(movie);
+            unitOfWork.MovieRepo.Add(movie);
+            unitOfWork.Commit();
             return Ok(movie);
         }
 
@@ -78,7 +85,7 @@ namespace Movies.Controllers
         [HttpGet("getById/{id}")]
         public async Task<IActionResult> getbyid(int id)
         {
-            var movie =  await _movieService.getbyid(id);
+            var movie = await unitOfWork.MovieRepo.GetbyId<int>(id);
 
             if (movie == null)
                 return NotFound("Not found");
@@ -88,31 +95,33 @@ namespace Movies.Controllers
                 postar = movie.postar
             });
         }
+        //git remote add origin https://github.com/Mahmoud272779/ERP_system.git
 
-        [HttpGet("getByGenreId/{id}")]
-        public async Task<IActionResult> getbygenreid(int id)
-        {
-            var movies = await _movieService.getbygenreid(id);
+        //[httpget("getbygenreid/{id}")]
+        //public async task<iactionresult> getbygenreid(int id)
+        //{
+        //    var movies = await _movieservice.getbygenreid(id);
 
 
 
-            if (movies == null)
-                return NotFound("Not found");
-            return Ok(movies.Select(m => new { m.GenreId, m.Title }).ToList()
-           );
-        }
+        //    if (movies == null)
+        //        return notfound("not found");
+        //    return ok(movies.select(m => new { m.genreid, m.title }).tolist()
+        //   );
+        //}
 
         [HttpDelete("Delmovie/{id}")]
         public async Task<IActionResult> Delmovie(int id)
         {
-            var movie = await _movieService.getbyid(id);
+            var movie = await unitOfWork.MovieRepo.GetbyId(id);
 
 
 
             if (movie == null)
                 return NotFound("Not found");
 
-             _movieService.delmovie(movie);
+            unitOfWork.MovieRepo.DeleteGenre(movie);
+            unitOfWork.Commit();
             return Ok(movie
            );
         }
